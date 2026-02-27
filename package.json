@@ -1,0 +1,14 @@
+{
+  "name": "attendanceiq",
+  "version": "1.0.0",
+  "description": "Full-stack MERN attendance management system",
+  "scripts": {
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm start\"",
+    "seed": "cd backend && node seed.js",
+    "start": "cd backend && node server.js"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
