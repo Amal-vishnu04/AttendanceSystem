@@ -45,9 +45,14 @@ const DashboardLayout = ({ navItems, children }) => {
 
                 <div className="sidebar-footer">
                     <div className="user-info">
-                        <div className="user-avatar">{initials}</div>
-                        <div>
-                            <div className="user-name">{user?.name}</div>
+                        <div className="user-avatar">
+                            {user?.profilePicture
+                                ? <img src={user.profilePicture} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                                : initials
+                            }
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="user-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name}</div>
                             <div className="user-role">{user?.role}</div>
                         </div>
                     </div>

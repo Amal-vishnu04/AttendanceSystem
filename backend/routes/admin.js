@@ -7,6 +7,7 @@ const { protect, authorize } = require('../middleware/auth');
 const router = express.Router();
 router.use(protect, authorize('admin'));
 
+
 // GET /api/admin/stats
 router.get('/stats', async (req, res) => {
     try {
@@ -30,6 +31,7 @@ router.get('/stats', async (req, res) => {
     }
 });
 
+
 // GET /api/admin/students
 router.get('/students', async (req, res) => {
     try {
@@ -40,36 +42,57 @@ router.get('/students', async (req, res) => {
     }
 });
 
+
 // POST /api/admin/students
 router.post('/students', async (req, res) => {
     try {
-        const { name, rollNumber, department, parentContact, password } = req.body;
-        if (!name || !rollNumber) return res.status(400).json({ message: 'Name and roll number are required' });
+        const { name, email, rollNumber, department, year, parentContact, password } = req.body;
 
-        const existing = await User.findOne({ rollNumber: rollNumber.toUpperCase() });
-        if (existing) return res.status(400).json({ message: 'Roll number already exists' });
+        // Basic validation
+        if (!name || !rollNumber || !year) {
+            return res.status(400).json({ message: 'Name, Roll Number and Year are required' });
+        }
+
+        // Check duplicate roll number
+        const existingRoll = await User.findOne({ rollNumber: rollNumber.toUpperCase() });
+        if (existingRoll) {
+            return res.status(400).json({ message: 'Roll number already exists' });
+        }
+
+        // Check duplicate email (if provided)
+        if (email) {
+            const existingEmail = await User.findOne({ email: email.toLowerCase() });
+            if (existingEmail) {
+                return res.status(400).json({ message: 'Email already exists' });
+            }
+        }
 
         const student = await User.create({
             name,
+            email: email?.toLowerCase(),
             rollNumber: rollNumber.toUpperCase(),
             department,
+            year,
             parentContact,
             password: password || 'Student@123',
             role: 'student',
         });
+
         res.status(201).json(student);
+
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 });
 
+
 // PUT /api/admin/students/:id
 router.put('/students/:id', async (req, res) => {
     try {
-        const { name, rollNumber, department, parentContact } = req.body;
+        const { name, rollNumber, department, year, parentContact } = req.body;
         const student = await User.findByIdAndUpdate(
             req.params.id,
-            { name, rollNumber: rollNumber?.toUpperCase(), department, parentContact },
+            { name, rollNumber: rollNumber?.toUpperCase(), department, year, parentContact },
             { new: true, runValidators: true }
         );
         if (!student) return res.status(404).json({ message: 'Student not found' });
@@ -78,6 +101,7 @@ router.put('/students/:id', async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+
 
 // DELETE /api/admin/students/:id
 router.delete('/students/:id', async (req, res) => {
@@ -90,6 +114,7 @@ router.delete('/students/:id', async (req, res) => {
     }
 });
 
+
 // GET /api/admin/instructors
 router.get('/instructors', async (req, res) => {
     try {
@@ -99,6 +124,7 @@ router.get('/instructors', async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+
 
 // POST /api/admin/instructors
 router.post('/instructors', async (req, res) => {
@@ -121,6 +147,7 @@ router.post('/instructors', async (req, res) => {
     }
 });
 
+
 // DELETE /api/admin/instructors/:id
 router.delete('/instructors/:id', async (req, res) => {
     try {
@@ -132,11 +159,12 @@ router.delete('/instructors/:id', async (req, res) => {
     }
 });
 
+
 // GET /api/admin/leaves
 router.get('/leaves', async (req, res) => {
     try {
         const leaves = await Leave.find()
-            .populate('student', 'name rollNumber department')
+            .populate('student', 'name rollNumber department year')
             .populate('reviewedBy', 'name')
             .sort({ createdAt: -1 });
         res.json(leaves);
@@ -144,5 +172,6 @@ router.get('/leaves', async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+
 
 module.exports = router;
