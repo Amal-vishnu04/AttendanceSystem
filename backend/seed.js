@@ -36,9 +36,9 @@ const seed = async () => {
 
         // Create Students
         const students = [
-            { name: 'Alice Johnson', rollNumber: 'CS2021001', department: 'Computer Science', parentContact: '9876543210' },
-            { name: 'Bob Williams', rollNumber: 'CS2021002', department: 'Computer Science', parentContact: '9876543211' },
-            { name: 'Carol Davis', rollNumber: 'CS2021003', department: 'Computer Science', parentContact: '9876543212' },
+            { name: 'Alice Johnson', rollNumber: 'CS2021001', department: 'Computer Science', year: '2nd', parentContact: '9876543210' },
+            { name: 'Bob Williams',  rollNumber: 'CS2021002', department: 'Computer Science', year: '2nd', parentContact: '9876543211' },
+            { name: 'Carol Davis',   rollNumber: 'CS2021003', department: 'Computer Science', year: '3rd', parentContact: '9876543212' },
         ];
 
         for (const s of students) {

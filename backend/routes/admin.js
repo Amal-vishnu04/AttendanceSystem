@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const Leave = require('../models/Leave');
@@ -168,6 +169,71 @@ router.get('/leaves', async (req, res) => {
             .populate('reviewedBy', 'name')
             .sort({ createdAt: -1 });
         res.json(leaves);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
+// GET /api/admin/profile
+router.get('/profile', async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('-password');
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
+// PUT /api/admin/profile
+router.put('/profile', async (req, res) => {
+    try {
+        const { name, phone, bio, profilePicture } = req.body;
+
+        if (profilePicture && profilePicture.length > 2 * 1024 * 1024 * 1.37) {
+            return res.status(400).json({ message: 'Profile picture too large. Max 2MB.' });
+        }
+
+        const updatedFields = {};
+        if (name !== undefined) updatedFields.name = name.trim();
+        if (phone !== undefined) updatedFields.phone = phone.trim();
+        if (bio !== undefined) updatedFields.bio = bio.trim();
+        if (profilePicture !== undefined) updatedFields.profilePicture = profilePicture;
+
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { $set: updatedFields },
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
+// PUT /api/admin/change-password
+router.put('/change-password', async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ message: 'Current and new password are required' });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: 'New password must be at least 6 characters' });
+        }
+
+        const user = await User.findById(req.user._id);
+        const isMatch = await user.comparePassword(currentPassword);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+
+        user.password = newPassword;
+        await user.save(); // triggers bcrypt hash
+        res.json({ message: 'Password changed successfully' });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
