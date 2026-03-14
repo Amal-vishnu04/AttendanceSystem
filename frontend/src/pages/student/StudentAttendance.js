@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
-const COLORS = { Present: '#10b981', Absent: '#ef4444', Leave: '#f59e0b' };
+const COLORS = { Present: '#10b981', Absent: '#ef4444', Late: '#f59e0b' };
 
 const StudentAttendance = () => {
     const thisMonth = () => {
@@ -29,15 +29,15 @@ const StudentAttendance = () => {
     const counts = records.reduce((acc, r) => {
         acc[r.status] = (acc[r.status] || 0) + 1;
         return acc;
-    }, { Present: 0, Absent: 0, Leave: 0 });
+    }, { Present: 0, Absent: 0, Late: 0 });
 
-    const total = counts.Present + counts.Absent + counts.Leave;
+    const total = counts.Present + counts.Absent + counts.Late;
     const percentage = total > 0 ? ((counts.Present / total) * 100).toFixed(1) : 0;
 
     const pieData = [
         { name: 'Present', value: counts.Present },
         { name: 'Absent', value: counts.Absent },
-        { name: 'Leave', value: counts.Leave },
+        { name: 'Late', value: counts.Late },
     ].filter(d => d.value > 0);
 
     const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -70,7 +70,7 @@ const StudentAttendance = () => {
                                     {[
                                         { label: 'Present', count: counts.Present, color: '#10b981' },
                                         { label: 'Absent', count: counts.Absent, color: '#ef4444' },
-                                        { label: 'Leave', count: counts.Leave, color: '#f59e0b' },
+                                        { label: 'Late', count: counts.Late, color: '#f59e0b' },
                                     ].map(item => (
                                         <div key={item.label}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>

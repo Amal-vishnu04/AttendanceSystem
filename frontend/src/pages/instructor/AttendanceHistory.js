@@ -75,7 +75,7 @@ const AttendanceHistory = () => {
                         <div style={{ display: 'flex', gap: '12px', fontSize: '0.82rem' }}>
                             <span style={{ color: 'var(--accent-success)' }}>Present: {statusCount['Present'] || 0}</span>
                             <span style={{ color: 'var(--accent-danger)' }}>Absent: {statusCount['Absent'] || 0}</span>
-                            <span style={{ color: 'var(--accent-warning)' }}>Leave: {statusCount['Leave'] || 0}</span>
+                            <span style={{ color: 'var(--accent-warning)' }}>Late: {statusCount['Late'] || 0}</span>
                         </div>
                     )}
                 </div>

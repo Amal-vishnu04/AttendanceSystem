@@ -132,7 +132,7 @@ const MarkAttendance = () => {
                                 A: {counts['Absent'] || 0}
                             </span>
                             <span style={{ color: 'var(--accent-warning)' }}>
-                                L: {counts['Leave'] || 0}
+                                L: {counts['Late'] || 0}
                             </span>
                         </div>
                     </div>
@@ -189,7 +189,7 @@ const MarkAttendance = () => {
                                 </div>
 
                                 <div className="attendance-toggle">
-                                    {['Present', 'Absent', 'Leave'].map((status) => (
+                                    {['Present', 'Absent', 'Late'].map((status) => (
                                         <button
                                             key={status}
                                             className={`toggle-btn ${

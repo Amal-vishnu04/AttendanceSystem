@@ -136,11 +136,11 @@ router.get('/export', async (req, res) => {
                 const status = dayData[parseInt(d)] || '-';
                 if (status === 'Present') present++;
                 else if (status === 'Absent') absent++;
-                else if (status === 'Leave') leave++;
+                else if (status === 'Late') leave++;
 
                 return status === 'Present' ? 'P'
                     : status === 'Absent' ? 'A'
-                    : status === 'Leave' ? 'L'
+                    : status === 'Late' ? 'L'
                     : '-';
             });
 
@@ -209,6 +209,70 @@ router.patch('/leaves/:id', async (req, res) => {
 
         res.json(leave);
 
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
+// ✅ GET /api/instructor/profile
+router.get('/profile', async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('-password');
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// ✅ PUT /api/instructor/profile
+router.put('/profile', async (req, res) => {
+    try {
+        const { name, phone, bio, profilePicture } = req.body;
+
+        // Validate profile picture size (max 2MB as base64)
+        if (profilePicture && profilePicture.length > 2 * 1024 * 1024 * 1.37) {
+            return res.status(400).json({ message: 'Profile picture too large. Max 2MB.' });
+        }
+
+        const updatedFields = {};
+        if (name !== undefined) updatedFields.name = name.trim();
+        if (phone !== undefined) updatedFields.phone = phone.trim();
+        if (bio !== undefined) updatedFields.bio = bio.trim();
+        if (profilePicture !== undefined) updatedFields.profilePicture = profilePicture;
+
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { $set: updatedFields },
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// ✅ PUT /api/instructor/change-password
+router.put('/change-password', async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ message: 'Current and new password are required' });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: 'New password must be at least 6 characters' });
+        }
+
+        const user = await User.findById(req.user._id);
+        const isMatch = await user.comparePassword(currentPassword);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+
+        user.password = newPassword;
+        await user.save(); // triggers bcrypt hash
+        res.json({ message: 'Password changed successfully' });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

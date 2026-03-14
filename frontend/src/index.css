@@ -566,7 +566,7 @@ textarea.form-control {
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-.badge-leave {
+.badge-late {
   background: rgba(245, 158, 11, 0.12);
   color: var(--accent-warning);
   border: 1px solid rgba(245, 158, 11, 0.2);
@@ -794,7 +794,7 @@ textarea.form-control {
   border-color: rgba(239, 68, 68, 0.35);
 }
 
-.toggle-btn.active-leave {
+.toggle-btn.active-late {
   background: rgba(245, 158, 11, 0.15);
   color: var(--accent-warning);
   border-color: rgba(245, 158, 11, 0.35);
