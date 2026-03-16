@@ -7,7 +7,7 @@ A full-stack web application for managing student attendance with role-based das
 ## ✨ Features
 
 ### 🛡️ Admin
-- Add, edit, and delete students (name, roll number, department, parent contact)
+- Add, edit, and delete students (name, roll number, department, parent contact),
 - Add and remove instructors
 - View all leave requests across the system
 - Dashboard with real-time stats (total students, instructors, today's attendance, pending leaves)
