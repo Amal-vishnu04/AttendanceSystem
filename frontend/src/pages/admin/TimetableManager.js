@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const BulkTimetableEntry = ({ instructors, onSave }) => {
-    const years = ['1st', '2nd', '3rd', '4th'];
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// Static arrays moved outside the component to keep references stable
+const YEARS = ['1st', '2nd', '3rd', '4th'];
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const BulkTimetableEntry = ({ instructors, onSave }) => {
     const initialData = () => {
         const data = {};
-        years.forEach(year => {
+        YEARS.forEach(year => {
             data[year] = {};
-            days.forEach(day => {
+            DAYS.forEach(day => {
                 data[year][day] = Array.from({ length: 8 }, () => ({ subject: '', instructor: '' }));
             });
         });
@@ -28,9 +29,9 @@ const BulkTimetableEntry = ({ instructors, onSave }) => {
                 const dbEntries = res.data;
                 setData(prev => {
                     const newData = { ...prev };
-                    years.forEach(y => {
+                    YEARS.forEach(y => {
                         newData[y] = { ...prev[y] };
-                        days.forEach(d => {
+                        DAYS.forEach(d => {
                             newData[y][d] = prev[y][d].map(p => ({ ...p }));
                         });
                     });
@@ -85,8 +86,8 @@ const BulkTimetableEntry = ({ instructors, onSave }) => {
 
     const handleSaveAll = async () => {
         const entriesToSave = [];
-        years.forEach(year => {
-            days.forEach(day => {
+        YEARS.forEach(year => {
+            DAYS.forEach(day => {
                 data[year][day].forEach((periodData, i) => {
                     if (periodData.subject.trim() !== '' && periodData.instructor !== '') {
                         entriesToSave.push({
@@ -120,7 +121,7 @@ const BulkTimetableEntry = ({ instructors, onSave }) => {
 
             {/* YEAR FILTER */}
             <div className="year-tabs">
-                {years.map(year => (
+                {YEARS.map(year => (
                     <button
                         key={year}
                         className={`year-tab ${activeYear === year ? 'active' : ''}`}
@@ -133,7 +134,7 @@ const BulkTimetableEntry = ({ instructors, onSave }) => {
 
             {/* DAY TABS */}
             <div className="day-tabs">
-                {days.map(day => (
+                {DAYS.map(day => (
                     <button
                         key={day}
                         className={`day-tab ${activeDay === day ? 'active' : ''}`}
@@ -179,9 +180,11 @@ const BulkTimetableEntry = ({ instructors, onSave }) => {
             </div>
 
             {/* WEEK OVERVIEW */}
-            <h3 style={{ marginBottom: '15px', color: '#fff', fontSize: '16px', marginTop: '40px' }}>Week Overview - {activeYear} Year</h3>
+            <h3 style={{ marginBottom: '15px', color: '#fff', fontSize: '16px', marginTop: '40px' }}>
+                Week Overview - {activeYear} Year
+            </h3>
             <div className="week-overview">
-                {days.map(day => {
+                {DAYS.map(day => {
                     const filled = countFilled(activeYear, day);
                     const percentage = (filled / 8) * 100;
                     return (
