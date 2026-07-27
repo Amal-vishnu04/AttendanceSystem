@@ -3,6 +3,7 @@ const XLSX = require('xlsx');
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const Leave = require('../models/Leave');
+const Timetable = require('../models/Timetable');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
@@ -26,14 +27,37 @@ router.get('/students', async (req, res) => {
 });
 
 
-// ✅ POST /api/instructor/attendance — bulk mark with year
+// ✅ GET /api/instructor/timetable/today
+router.get('/timetable/today', async (req, res) => {
+    try {
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const currentDayIndex = new Date().getDay(); // 0 is Sunday, 1 is Monday
+        const todayStr = days[currentDayIndex];
+
+        if (todayStr === 'Sunday') {
+            return res.json([]); // No timetable on Sunday
+        }
+
+        const timetable = await Timetable.find({
+            instructor: req.user._id,
+            day: todayStr
+        }).sort({ period: 1 });
+
+        res.json({ day: todayStr, timetable });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
+// ✅ POST /api/instructor/attendance — bulk mark with year, day, activity
 router.post('/attendance', async (req, res) => {
     try {
-        const { date, records, year } = req.body;
+        const { date, records, year, period, subject, day, activity } = req.body;
         // records: [{ studentId, status }]
 
-        if (!date || !records || !Array.isArray(records) || !year) {
-            return res.status(400).json({ message: 'date, year and records[] are required' });
+        if (!date || !records || !Array.isArray(records) || !year || !period || !subject || !day || !activity) {
+            return res.status(400).json({ message: 'date, year, period, subject, day, activity and records[] are required' });
         }
 
         const dayStart = new Date(date);
@@ -41,13 +65,17 @@ router.post('/attendance', async (req, res) => {
 
         const ops = records.map(({ studentId, status }) => ({
             updateOne: {
-                filter: { student: studentId, date: dayStart },
+                filter: { student: studentId, date: dayStart, period },
                 update: {
                     $set: {
                         student: studentId,
                         date: dayStart,
                         status,
+                        period,
+                        subject,
                         year,
+                        day,
+                        activity,
                         markedBy: req.user._id
                     }
                 },
@@ -68,7 +96,7 @@ router.post('/attendance', async (req, res) => {
 // ✅ GET /api/instructor/attendance?date=YYYY-MM-DD&year=1st
 router.get('/attendance', async (req, res) => {
     try {
-        const { date, year } = req.query;
+        const { date, year, period, subject } = req.query;
         if (!date) return res.status(400).json({ message: 'date query param required' });
 
         const dayStart = new Date(date);
@@ -78,6 +106,8 @@ router.get('/attendance', async (req, res) => {
 
         const filter = { date: { $gte: dayStart, $lt: dayEnd } };
         if (year) filter.year = year;
+        if (period) filter.period = period;
+        if (subject) filter.subject = subject;
 
         const records = await Attendance.find(filter)
             .populate('student', 'name rollNumber department year');
@@ -93,7 +123,7 @@ router.get('/attendance', async (req, res) => {
 // ✅ GET /api/instructor/export?month=YYYY-MM&year=1st
 router.get('/export', async (req, res) => {
     try {
-        const { month, year } = req.query;
+        const { month, year, subject } = req.query;
 
         if (!month) {
             return res.status(400).json({ message: 'month query param required (YYYY-MM)' });
@@ -110,6 +140,7 @@ router.get('/export', async (req, res) => {
 
         const attendanceFilter = { date: { $gte: startDate, $lt: endDate } };
         if (year) attendanceFilter.year = year;
+        if (subject) attendanceFilter.subject = subject;
 
         const records = await Attendance.find(attendanceFilter);
 
@@ -118,13 +149,17 @@ router.get('/export', async (req, res) => {
             const sid = r.student.toString();
             const day = new Date(r.date).getDate();
             if (!lookup[sid]) lookup[sid] = {};
-            lookup[sid][day] = r.status;
+            // Instead of overwriting, we might keep track of multiple periods,
+            // but for the export let's count percentage of classes attended if a subject is selected
+            // If multiple periods marked "Present" in a single day, or "Absent", just store all data
+            if (!lookup[sid][day]) lookup[sid][day] = [];
+            lookup[sid][day].push(r.status);
         }
 
         const daysInMonth = new Date(y, m, 0).getDate();
         const dayHeaders = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`);
 
-        const headerRow = ['Roll Number', 'Name', 'Department', 'Year', ...dayHeaders, 'Present', 'Absent', 'Leave', 'Percentage'];
+        const headerRow = ['Roll Number', 'Name', 'Department', 'Year', ...dayHeaders, 'Present classes', 'Absent classes', 'Late classes', 'Percentage'];
         const data = [headerRow];
 
         for (const student of students) {
@@ -133,15 +168,23 @@ router.get('/export', async (req, res) => {
             let present = 0, absent = 0, leave = 0;
 
             const dayValues = dayHeaders.map((d) => {
-                const status = dayData[parseInt(d)] || '-';
-                if (status === 'Present') present++;
-                else if (status === 'Absent') absent++;
-                else if (status === 'Late') leave++;
+                const statuses = dayData[parseInt(d)] || [];
+                if (statuses.length === 0) return '-';
+                
+                statuses.forEach(status => {
+                    if (status === 'Present') present++;
+                    else if (status === 'Absent') absent++;
+                    else if (status === 'Late') leave++;
+                });
 
-                return status === 'Present' ? 'P'
-                    : status === 'Absent' ? 'A'
-                    : status === 'Late' ? 'L'
-                    : '-';
+                // Displaying a summary for the day in the cell e.g., P:2, A:1
+                let p = 0, a = 0, l = 0;
+                statuses.forEach(s => {
+                    if (s === 'Present') p++;
+                    else if (s === 'Absent') a++;
+                    else if (s === 'Late') l++;
+                });
+                return `${p ? 'P:'+p+' ' : ''}${a ? 'A:'+a+' ' : ''}${l ? 'L:'+l : ''}`.trim() || '-';
             });
 
             const total = present + absent + leave;

@@ -9,7 +9,18 @@ const AttendanceHistory = () => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     });
+    const [exportYear, setExportYear] = useState('');
+    const [exportSubject, setExportSubject] = useState('');
     const [exporting, setExporting] = useState(false);
+    const [instructorSubjects, setInstructorSubjects] = useState([]);
+
+    useEffect(() => {
+        axios.get('/api/instructor/profile')
+            .then(res => {
+                if (res.data.subjects) setInstructorSubjects(res.data.subjects);
+            })
+            .catch(err => console.error(err));
+    }, []);
 
     const fetchHistory = async () => {
         setLoading(true);
@@ -26,7 +37,10 @@ const AttendanceHistory = () => {
         setExporting(true);
         try {
             const token = localStorage.getItem('aiq_token');
-            const response = await fetch(`/api/instructor/export?month=${exportMonth}`, {
+            let exportUrl = `/api/instructor/export?month=${exportMonth}`;
+            if (exportYear) exportUrl += `&year=${exportYear}`;
+            if (exportSubject) exportUrl += `&subject=${exportSubject}`;
+            const response = await fetch(exportUrl, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!response.ok) throw new Error('Export failed');
@@ -59,7 +73,30 @@ const AttendanceHistory = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>📊 Export Monthly Report</span>
                         <input type="month" className="form-control" value={exportMonth} onChange={e => setExportMonth(e.target.value)} style={{ width: 'auto' }} />
-                        <button className="btn btn-success" onClick={handleExport} disabled={exporting}>
+                        <select
+                            className="form-control"
+                            value={exportYear}
+                            onChange={(e) => setExportYear(e.target.value)}
+                            style={{ width: '120px' }}
+                        >
+                            <option value="">All Years</option>
+                            <option value="1st">1st Year</option>
+                            <option value="2nd">2nd Year</option>
+                            <option value="3rd">3rd Year</option>
+                            <option value="4th">4th Year</option>
+                        </select>
+                        <select
+                            className="form-control"
+                            value={exportSubject}
+                            onChange={(e) => setExportSubject(e.target.value)}
+                            style={{ width: '140px' }}
+                        >
+                            <option value="">All Subjects</option>
+                            {instructorSubjects.map(sub => (
+                                <option key={sub} value={sub}>{sub}</option>
+                            ))}
+                        </select>
+                        <button className="btn btn-success" onClick={handleExport} disabled={exporting || !exportMonth}>
                             {exporting ? 'Exporting…' : '⬇️ Download Excel'}
                         </button>
                     </div>
@@ -93,6 +130,9 @@ const AttendanceHistory = () => {
                                     <th>Roll Number</th>
                                     <th>Name</th>
                                     <th>Department</th>
+                                    <th>Year</th>
+                                    <th>Period</th>
+                                    <th>Subject</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -102,6 +142,9 @@ const AttendanceHistory = () => {
                                         <td><code style={{ background: 'var(--bg-input)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.82rem' }}>{r.student?.rollNumber}</code></td>
                                         <td>{r.student?.name}</td>
                                         <td className="td-secondary">{r.student?.department || '—'}</td>
+                                        <td className="td-secondary">{r.year || r.student?.year}</td>
+                                        <td>{r.period || '-'}</td>
+                                        <td className="td-secondary">{r.subject || '-'}</td>
                                         <td><span className={`badge badge-${r.status.toLowerCase()}`}>{r.status}</span></td>
                                     </tr>
                                 ))}

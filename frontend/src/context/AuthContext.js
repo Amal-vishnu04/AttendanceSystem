@@ -3,6 +3,9 @@ import axios from 'axios';
 
 const AuthContext = createContext();
 
+// Backend API URL
+const API = process.env.REACT_APP_API_URL;
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(() => localStorage.getItem('aiq_token'));
@@ -10,6 +13,8 @@ export const AuthProvider = ({ children }) => {
 
     // Axios defaults
     useEffect(() => {
+        axios.defaults.baseURL = API;
+
         if (token) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         } else {
@@ -20,26 +25,39 @@ export const AuthProvider = ({ children }) => {
     // On mount: fetch current user
     useEffect(() => {
         const fetchMe = async () => {
-            if (!token) { setLoading(false); return; }
+            if (!token) {
+                setLoading(false);
+                return;
+            }
+
             try {
                 const { data } = await axios.get('/api/auth/me');
                 setUser(data);
-            } catch {
+            } catch (error) {
                 logout();
             } finally {
                 setLoading(false);
             }
         };
+
         fetchMe();
         // eslint-disable-next-line
     }, []);
 
     const login = async (identifier, password, role) => {
-        const { data } = await axios.post('/api/auth/login', { identifier, password, role });
+        const { data } = await axios.post('/api/auth/login', {
+            identifier,
+            password,
+            role,
+        });
+
         localStorage.setItem('aiq_token', data.token);
         setToken(data.token);
+
         axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+
         setUser(data.user);
+
         return data.user;
     };
 
@@ -55,11 +73,21 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, logout, updateUser }}>
+        <AuthContext.Provider
+            value={{
+                user,
+                token,
+                loading,
+                login,
+                logout,
+                updateUser,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );
 };
 
 export const useAuth = () => useContext(AuthContext);
+
 export default AuthContext;

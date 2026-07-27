@@ -161,6 +161,11 @@ const InstructorProfile = () => {
                                 <span className="profile-badge purple">👨‍🏫 Instructor</span>
                                 {user?.department && <span className="profile-badge teal">🏛️ {user?.department}</span>}
                             </div>
+                            {user?.subjects && user.subjects.length > 0 && (
+                                <div style={{ marginTop: '8px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                                    📚 Subjects: {user.subjects.join(', ')}
+                                </div>
+                            )}
                         </div>
 
                         {/* Remove pic button */}
@@ -218,6 +223,10 @@ const InstructorProfile = () => {
                                     <div className="form-group">
                                         <label className="form-label">Email</label>
                                         <input className="form-control" value={user?.email || '—'} readOnly style={{ opacity: 0.6, cursor: 'not-allowed' }} />
+                                    </div>
+                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                        <label className="form-label">Assigned Subjects</label>
+                                        <input className="form-control" value={user?.subjects?.join(', ') || '—'} readOnly style={{ opacity: 0.6, cursor: 'not-allowed' }} />
                                     </div>
                                 </div>
 

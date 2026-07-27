@@ -4,23 +4,45 @@ import axios from 'axios';
 const today = () => new Date().toISOString().split('T')[0];
 
 const MarkAttendance = () => {
+    const [timetable, setTimetable] = useState([]);
+    const [todayDay, setTodayDay] = useState("");
+    const [selectedClass, setSelectedClass] = useState(null);
+
     const [students, setStudents] = useState([]);
     const [attendance, setAttendance] = useState({});
     const [date, setDate] = useState(today());
-    const [year, setYear] = useState(""); // ✅ Added year state
+    const [activity, setActivity] = useState("Lecture");
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
 
-    // ✅ Fetch students + attendance by year & date
+    // Fetch timetable for today
+    useEffect(() => {
+        const fetchTimetable = async () => {
+            setLoading(true);
+            try {
+                const res = await axios.get('/api/instructor/timetable/today');
+                setTodayDay(res.data.day);
+                setTimetable(res.data.timetable || []);
+            } catch (err) {
+                console.error("Error fetching timetable:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchTimetable();
+    }, []);
+
+    // Fetch students + attendance when a class is selected
     const fetchData = useCallback(async () => {
-        if (!year) return;
+        if (!selectedClass) return;
 
         setLoading(true);
         try {
+            const { year, period, subject } = selectedClass;
             const [studRes, attRes] = await Promise.all([
                 axios.get(`/api/instructor/students?year=${year}`),
-                axios.get(`/api/instructor/attendance?date=${date}&year=${year}`)
+                axios.get(`/api/instructor/attendance?date=${date}&year=${year}&period=${period}&subject=${subject}`)
             ]);
 
             setStudents(studRes.data);
@@ -28,6 +50,7 @@ const MarkAttendance = () => {
             const map = {};
             attRes.data.forEach(r => {
                 map[r.student._id] = r.status;
+                if (r.activity) setActivity(r.activity); // Set activity if already saved
             });
 
             // Default Present if not marked
@@ -42,7 +65,7 @@ const MarkAttendance = () => {
         } finally {
             setLoading(false);
         }
-    }, [date, year]);
+    }, [date, selectedClass]);
 
     useEffect(() => {
         fetchData();
@@ -53,8 +76,8 @@ const MarkAttendance = () => {
     };
 
     const handleSave = async () => {
-        if (!year) {
-            setMessage({ type: 'error', text: 'Please select a year first' });
+        if (!selectedClass || !activity) {
+            setMessage({ type: 'error', text: 'Class and Activity are required' });
             return;
         }
 
@@ -69,7 +92,11 @@ const MarkAttendance = () => {
 
             await axios.post('/api/instructor/attendance', {
                 date,
-                year, // ✅ sending year
+                year: selectedClass.year,
+                period: selectedClass.period,
+                subject: selectedClass.subject,
+                day: todayDay,
+                activity,
                 records
             });
 
@@ -90,32 +117,75 @@ const MarkAttendance = () => {
         return acc;
     }, {});
 
+    if (!selectedClass) {
+        return (
+            <>
+                <div className="page-header">
+                    <h2>Today's Timetable ({todayDay || new Date().toLocaleDateString('en-US', { weekday: 'long' })})</h2>
+                    <p>Select a class to mark attendance</p>
+                </div>
+                <div className="page-body fade-in">
+                    {loading ? (
+                        <div className="spinner" />
+                    ) : timetable.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-icon">📅</div>
+                            <p>No classes assigned for today.</p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            {timetable.map(entry => (
+                                <div key={entry._id} style={{
+                                    display: 'flex', 
+                                    justifyContent: 'space-between', 
+                                    alignItems: 'center', 
+                                    padding: '15px 20px', 
+                                    background: 'var(--surface-color)', 
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--border-color)',
+                                }}>
+                                    <div>
+                                        <h4 style={{ margin: '0 0 5px 0', color: 'var(--text-color)' }}>
+                                            Period {entry.period} – {entry.subject}
+                                        </h4>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                            {entry.year} Year Students
+                                        </p>
+                                    </div>
+                                    <button 
+                                        className="btn btn-primary" 
+                                        onClick={() => setSelectedClass(entry)}
+                                    >
+                                        Mark Attendance
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
             <div className="page-header">
-                <h2>Mark Attendance</h2>
-                <p>Select year, date and mark attendance</p>
+                <button 
+                    className="btn btn-secondary btn-sm" 
+                    onClick={() => { setSelectedClass(null); setMessage(null); }}
+                    style={{ marginBottom: '15px' }}
+                >
+                    ⬅ Back to Timetable
+                </button>
+                <h2>Mark Attendance - Period {selectedClass.period}</h2>
+                <p>{selectedClass.subject} ({selectedClass.year} Year)</p>
             </div>
 
             <div className="page-body fade-in">
-                <div className="toolbar">
+                <div className="toolbar" style={{ flexWrap: 'wrap', gap: '15px' }}>
 
                     <div className="toolbar-left">
-
-                        {/* ✅ Year Dropdown */}
-                        <select
-                            className="form-control"
-                            value={year}
-                            onChange={(e) => setYear(e.target.value)}
-                            style={{ width: '150px' }}
-                        >
-                            <option value="">Select Year</option>
-                            <option value="1st">1st Year</option>
-                            <option value="2nd">2nd Year</option>
-                            <option value="3rd">3rd Year</option>
-                            <option value="4th">4th Year</option>
-                        </select>
-
+                        {/* ✅ Date */}
                         <input
                             type="date"
                             className="form-control"
@@ -123,6 +193,20 @@ const MarkAttendance = () => {
                             onChange={e => setDate(e.target.value)}
                             style={{ width: 'auto' }}
                         />
+
+                        {/* ✅ Activity Dropdown */}
+                        <select
+                            className="form-control"
+                            value={activity}
+                            onChange={(e) => setActivity(e.target.value)}
+                            style={{ width: '130px' }}
+                        >
+                            <option value="Lecture">Lecture</option>
+                            <option value="Lab">Lab</option>
+                            <option value="Seminar">Seminar</option>
+                            <option value="Test">Test</option>
+                            <option value="Assignment">Assignment</option>
+                        </select>
 
                         <div style={{ display: 'flex', gap: '8px', fontSize: '0.82rem' }}>
                             <span style={{ color: 'var(--accent-success)' }}>
@@ -152,7 +236,7 @@ const MarkAttendance = () => {
                         <button
                             className="btn btn-primary"
                             onClick={handleSave}
-                            disabled={saving || loading || !year}
+                            disabled={saving || loading}
                         >
                             {saving ? 'Saving…' : '💾 Save Attendance'}
                         </button>
@@ -165,12 +249,7 @@ const MarkAttendance = () => {
                     </div>
                 )}
 
-                {!year ? (
-                    <div className="empty-state">
-                        <div className="empty-icon">📚</div>
-                        <p>Please select a year to view students</p>
-                    </div>
-                ) : loading ? (
+                {loading ? (
                     <div className="spinner" />
                 ) : students.length === 0 ? (
                     <div className="empty-state">
@@ -178,7 +257,7 @@ const MarkAttendance = () => {
                         <p>No students found for this year.</p>
                     </div>
                 ) : (
-                    <div>
+                    <div style={{ marginTop: '20px' }}>
                         {students.map((s) => (
                             <div key={s._id} className="attendance-row">
                                 <div>

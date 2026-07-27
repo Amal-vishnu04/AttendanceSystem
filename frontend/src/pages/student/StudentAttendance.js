@@ -143,6 +143,8 @@ const StudentAttendance = () => {
                                             <tr>
                                                 <th>Date</th>
                                                 <th>Day</th>
+                                                <th>Period</th>
+                                                <th>Subject</th>
                                                 <th>Status</th>
                                             </tr>
                                         </thead>
@@ -153,6 +155,8 @@ const StudentAttendance = () => {
                                                     <tr key={r._id}>
                                                         <td>{fmtDate(r.date)}</td>
                                                         <td className="td-secondary">{d.toLocaleDateString('en-IN', { weekday: 'long' })}</td>
+                                                        <td>{r.period || '-'}</td>
+                                                        <td className="td-secondary">{r.subject || '-'}</td>
                                                         <td><span className={`badge badge-${r.status.toLowerCase()}`}>{r.status}</span></td>
                                                     </tr>
                                                 );

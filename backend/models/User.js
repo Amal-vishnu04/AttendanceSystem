@@ -40,6 +40,11 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
 
+  subjects: [{
+    type: String,
+    trim: true
+  }],
+
   year: {
     type: String,
     enum: ["1st", "2nd", "3rd", "4th"],

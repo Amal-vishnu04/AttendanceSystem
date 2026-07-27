@@ -3,10 +3,84 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const Leave = require('../models/Leave');
+const Timetable = require('../models/Timetable');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(protect, authorize('admin'));
+
+// GET /api/admin/timetable
+router.get('/timetable', async (req, res) => {
+    try {
+        const timetable = await Timetable.find()
+            .populate('instructor', 'name email department')
+            .sort({ day: 1, period: 1 });
+        res.json(timetable);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// POST /api/admin/timetable
+router.post('/timetable', async (req, res) => {
+    try {
+        const { day, period, subject, instructor, year } = req.body;
+        if (!day || !period || !subject || !instructor || !year) {
+            return res.status(400).json({ message: 'All fields are required' });
+        }
+        const entry = await Timetable.create({ day, period, subject, instructor, year });
+        res.status(201).json(entry);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// DELETE /api/admin/timetable/:id
+router.delete('/timetable/:id', async (req, res) => {
+    try {
+        const entry = await Timetable.findByIdAndDelete(req.params.id);
+        if (!entry) return res.status(404).json({ message: 'Timetable entry not found' });
+        res.json({ message: 'Timetable entry removed' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// POST /api/admin/timetable/bulk
+router.post('/timetable/bulk', async (req, res) => {
+    try {
+        const { entries } = req.body;
+        if (!entries || !Array.isArray(entries)) {
+            return res.status(400).json({ message: 'Entries array is required' });
+        }
+        
+        let saved = 0;
+        for (const entry of entries) {
+            const { day, period, subject, instructor, year } = entry;
+            if (day && period && subject && instructor && year) {
+                try {
+                    await Timetable.findOneAndUpdate(
+                        { day, period, year },
+                        { subject, instructor },
+                        { upsert: true, new: true, runValidators: true }
+                    );
+                    saved++;
+                } catch (err) {
+                    if (err.code === 11000) {
+                        return res.status(400).json({ 
+                            message: `Instructor conflict: already booked for Period ${period} on ${day}.` 
+                        });
+                    }
+                    throw err;
+                }
+            }
+        }
+        res.json({ saved });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 
 
 // GET /api/admin/stats
@@ -130,7 +204,7 @@ router.get('/instructors', async (req, res) => {
 // POST /api/admin/instructors
 router.post('/instructors', async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, department, subjects } = req.body;
         if (!name || !email) return res.status(400).json({ message: 'Name and email are required' });
 
         const existing = await User.findOne({ email: email.toLowerCase() });
@@ -141,8 +215,27 @@ router.post('/instructors', async (req, res) => {
             email: email.toLowerCase(),
             password: password || 'Instructor@123',
             role: 'instructor',
+            department,
+            subjects: subjects || []
         });
         res.status(201).json(instructor);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
+// PUT /api/admin/instructors/:id
+router.put('/instructors/:id', async (req, res) => {
+    try {
+        const { name, department, subjects } = req.body;
+        const instructor = await User.findByIdAndUpdate(
+            req.params.id,
+            { name, department, subjects: subjects || [] },
+            { new: true, runValidators: true }
+        );
+        if (!instructor) return res.status(404).json({ message: 'Instructor not found' });
+        res.json(instructor);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

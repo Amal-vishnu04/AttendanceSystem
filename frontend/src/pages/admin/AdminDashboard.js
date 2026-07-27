@@ -5,6 +5,7 @@ import AdminHome from './AdminHome';
 import StudentsManager from './StudentsManager';
 import InstructorsManager from './InstructorsManager';
 import LeavesManager from './LeavesManager';
+import TimetableManager from './TimetableManager';
 import AdminProfile from './AdminProfile';
 
 const navItems = [
@@ -13,6 +14,7 @@ const navItems = [
     { type: 'label', label: 'Management' },
     { to: '/admin/students', icon: '🎓', label: 'Students' },
     { to: '/admin/instructors', icon: '👨‍🏫', label: 'Instructors' },
+    { to: '/admin/timetable', icon: '🕒', label: 'Timetable' },
     { to: '/admin/leaves', icon: '📋', label: 'Leave Requests' },
     { type: 'label', label: 'Account' },
     { to: '/admin/profile', icon: '⚙️', label: 'My Profile' },
@@ -24,6 +26,7 @@ const AdminDashboard = () => (
             <Route index element={<AdminHome />} />
             <Route path="students" element={<StudentsManager />} />
             <Route path="instructors" element={<InstructorsManager />} />
+            <Route path="timetable" element={<TimetableManager />} />
             <Route path="leaves" element={<LeavesManager />} />
             <Route path="profile" element={<AdminProfile />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
